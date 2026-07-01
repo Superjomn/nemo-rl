@@ -24,6 +24,10 @@
 
 set -eoux pipefail
 
+# Compute nodes expose the shared filesystem as /lustre/fsw while the submit
+# host commonly reports /lustre/fs1.  Canonicalize before deriving all paths.
+SLURM_SUBMIT_DIR="${SLURM_SUBMIT_DIR/\/lustre\/fs1\//\/lustre\/fsw\/}"
+
 ########################################################
 # Function to detect if SLURM cluster uses GRES
 ########################################################
@@ -256,6 +260,12 @@ log-sync-sidecar() {
           else
             cp -r "\$session_dir/logs" "$LOG_DIR/ray/\$session_name/"
           fi
+          # nsys writes reports to node-local Ray logs. Keep a direct,
+          # hostname-scoped shared copy while workers are still alive.
+          if compgen -G "\$session_dir/logs/nsight/*.nsys-rep" > /dev/null; then
+            mkdir -p "$LOG_DIR/nsight/\$(hostname -s)"
+            cp -f "\$session_dir/logs/nsight/"*.nsys-rep "$LOG_DIR/nsight/\$(hostname -s)/" || true
+          fi
         fi
       done
     fi
@@ -267,8 +277,8 @@ log-sync-sidecar() {
 }
 log-sync-sidecar &
 
-# Patch nsight.py before starting Ray head
-sed -i 's/context\.py_executable = " "\.join(self\.nsight_cmd) + " python"/context.py_executable = " ".join(self.nsight_cmd) + f" {context.py_executable}"/g' /opt/nemo_rl_venv/lib64/python*/site-packages/ray/_private/runtime_env/nsight.py
+# Install the launch environment and version-checked nsys patches before Ray.
+source "$SLURM_SUBMIT_DIR/node_init_script.sh"
 
 cat <<EOFINNER | tee /launch-head.sh
 ray start --head \
@@ -360,6 +370,10 @@ log-sync-sidecar() {
           else
             cp -r "\$session_dir/logs" $LOG_DIR/ray/$node_i/\$session_name/
           fi
+          if compgen -G "\$session_dir/logs/nsight/*.nsys-rep" > /dev/null; then
+            mkdir -p "$LOG_DIR/nsight/\$(hostname -s)"
+            cp -f "\$session_dir/logs/nsight/"*.nsys-rep "$LOG_DIR/nsight/\$(hostname -s)/" || true
+          fi
         fi
       done
     fi
@@ -371,8 +385,7 @@ log-sync-sidecar() {
 }
 log-sync-sidecar &
 
-# Patch nsight.py before starting Ray worker
-sed -i 's/context\.py_executable = " "\.join(self\.nsight_cmd) + " python"/context.py_executable = " ".join(self.nsight_cmd) + f" {context.py_executable}"/g' /opt/nemo_rl_venv/lib64/python*/site-packages/ray/_private/runtime_env/nsight.py
+source "$SLURM_SUBMIT_DIR/node_init_script.sh"
 
 cat <<EOFINNER | tee /launch-worker.sh
 ray start --address "$ip_head" \
@@ -447,6 +460,7 @@ echo "All workers connected!"
 # We do so by launching a driver process on the physical node that the head node is on
 # This driver process is responsible for launching a job on the Ray cluster
 CONTAINER_CWD=$(scontrol show job $SLURM_JOB_ID | grep -oP 'WorkDir=\K[^ ]+' | head -1)
+CONTAINER_CWD="${CONTAINER_CWD/\/lustre\/fs1\//\/lustre\/fsw\/}"
 if [[ -n "$COMMAND" ]]; then
   srun --no-container-mount-home --overlap --container-name=ray-head --container-workdir=$CONTAINER_CWD --nodes=1 --ntasks=1 -w "$head_node" -o $LOG_DIR/ray-driver.log bash -c "$COMMAND"
 else

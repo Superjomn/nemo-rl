@@ -50,18 +50,35 @@ def get_nsight_config_if_pattern_matches(worker_name: str) -> dict[str, Any]:
             )
             return {
                 "nsight": {
-                    "t": "cuda,cudnn,cublas,nvtx",
+                    # Keep worker tracing lightweight.  Inner TRT-LLM TP
+                    # workers use this exact resolved configuration too.
+                    "t": "cuda,nvtx",
                     "o": f"'{worker_name}_{NRL_NSYS_PROFILE_STEP_RANGE}_%p'",
                     "stop-on-exit": "true",
                     # Capture range is required to control the scope of the profile
                     # Profile will only start/stop when torch.cuda.profiler.start()/stop() is called
                     "capture-range": "cudaProfilerApi",
-                    "capture-range-end": "stop",
+                    # Finalize one native capture when CUDA profiler stop is
+                    # reached, without sending a signal that kills the Ray
+                    # worker.  The node-init script validates support before
+                    # a profiling launch uses this configuration.
+                    "capture-range-end": "repeat-shutdown:1",
+                    "kill": "none",
                     "cuda-graph-trace": "node",
                 }
             }
 
     return {}
+
+
+def get_trtllm_ray_worker_nsight_options(worker_name: str) -> dict[str, Any] | None:
+    """Return the resolved nsys options for TRT-LLM's inner Ray workers.
+
+    The public configuration remains the NeMo-RL worker-pattern interface;
+    this small adapter prevents the sync and async workers from duplicating
+    its constants or option construction.
+    """
+    return get_nsight_config_if_pattern_matches(worker_name).get("nsight")
 
 
 def recursive_merge_options(

@@ -23,7 +23,9 @@ policy:
         linear: te
         rms_norm: torch_fp32
         experts: torch_mm
-        enable_deepep: true
+        # GB200/aarch64: deepep selects grouped-GEMM whose backward path has
+        # a cuBLAS failure. This correctness workaround is unrelated to nsys.
+        enable_deepep: false
         rope_fusion: false
         enable_hf_state_dict_adapter: true
   sequence_packing:
