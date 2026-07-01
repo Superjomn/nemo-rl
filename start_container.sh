@@ -12,7 +12,9 @@ SHARED_ROOT="${SHARED_ROOT:-/lustre/fsw/portfolios/coreai/projects/coreai_compar
 IMAGE_ROOT="${IMAGE_ROOT:-/lustre/fsw/portfolios/coreai/projects/coreai_comparch_trtllm/users/shuyix}"
 CONTAINER="${CONTAINER:-$IMAGE_ROOT/images/trtllm_base-e80b2876e-aarch64.sqsh}"
 TRTLLM_BUILD="${TRTLLM_BUILD:-$IMAGE_ROOT/TRTLLM_BUILD}"
-MODEL_CACHE="${HF_HOME:-$IMAGE_ROOT/hf_cache}"
+# Keep the cache mount aligned with the absolute model/tokenizer paths in the
+# recipe. Do not inherit a login-shell HF_HOME from a different user cache.
+MODEL_CACHE="${MODEL_CACHE:-$IMAGE_ROOT/hf_cache}"
 DATA_CACHE="${HF_DATASETS_CACHE:-$SHARED_ROOT/hf_cache/datasets}"
 GPUS_PER_NODE="${GPUS_PER_NODE:-4}"
 NNODES="${NNODES:-2}"
@@ -21,6 +23,7 @@ MAX_STEPS="${MAX_STEPS:-1}"
 
 [[ -f "$CONTAINER" ]] || { echo "CONTAINER not found: $CONTAINER" >&2; exit 2; }
 mkdir -p "$DATA_CACHE"
+export HF_HOME="$MODEL_CACHE"
 MOUNTS="$CONTAINER_SCRIPT_DIR:/opt/nemo-rl,$CONTAINER_SCRIPT_DIR:$CONTAINER_SCRIPT_DIR,$TRTLLM_BUILD:$TRTLLM_BUILD,$MODEL_CACHE:$MODEL_CACHE,$DATA_CACHE:$DATA_CACHE"
 
 # Set PROFILE=1 only after selecting a short, calibrated global engine range,
