@@ -8,6 +8,11 @@ export RAY_DEDUP_LOGS=0
 export TRTLLM_UCX_INTERFACE="${TRTLLM_UCX_INTERFACE:-eth0}"
 export TLLM_LOG_LEVEL="${TLLM_LOG_LEVEL:-info}"
 export NEMO_RL_PY_EXECUTABLES_TRTLLM="${NEMO_RL_PY_EXECUTABLES_TRTLLM:-/usr/bin/python3}"
+# TRT-LLM itself is installed in the base image's system interpreter, while
+# NeMo-RL dependencies (including transformers) live in this CPython-3.12
+# venv.  Make the latter visible to the system-Python Ray actors without
+# replacing the interpreter that can import tensorrt_llm.
+export PYTHONPATH="/opt/nemo_rl_venv/lib/python3.12/site-packages:${PYTHONPATH:-}"
 export LLM_MODELS_ROOT="${LLM_MODELS_ROOT:-/lustre/fsw/coreai_comparch_trtllm/common}"
 export HF_HOME="${HF_HOME:-/lustre/fsw/portfolios/coreai/projects/coreai_comparch_trtllm/users/shuyix/hf_cache}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-${PWD}/.cache/hf/datasets}"
