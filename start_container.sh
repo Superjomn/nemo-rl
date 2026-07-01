@@ -34,7 +34,9 @@ else
   unset NRL_NSYS_WORKER_PATTERNS NRL_NSYS_PROFILE_STEP_RANGE TLLM_PROFILE_START_STOP TLLM_LLMAPI_ENABLE_NVTX || true
 fi
 
-export COMMAND="source '$CONTAINER_SCRIPT_DIR/node_init_script.sh' && uv run python -u examples/run_grpo.py --config examples/configs/recipes/llm/grpo-nanov3-30BA3B-2n4g-fsdp2-trtllm.yaml grpo.max_num_steps=$MAX_STEPS logger.wandb.mode=${WANDB_MODE:-offline}"
+# WANDB_MODE is exported by node_init_script.sh; do not inject a recipe-specific
+# Hydra key because this recipe has no logger.wandb.mode field.
+export COMMAND="source '$CONTAINER_SCRIPT_DIR/node_init_script.sh' && uv run python -u examples/run_grpo.py --config examples/configs/recipes/llm/grpo-nanov3-30BA3B-2n4g-fsdp2-trtllm.yaml grpo.max_num_steps=$MAX_STEPS"
 export CONTAINER MOUNTS GPUS_PER_NODE NNODES JOB_NAME
 export RAY_LOG_SYNC_FREQUENCY="${RAY_LOG_SYNC_FREQUENCY:-30}"
 export BASE_LOG_DIR="${BASE_LOG_DIR:-$CONTAINER_SCRIPT_DIR/logs}"
