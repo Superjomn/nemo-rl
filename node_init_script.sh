@@ -12,7 +12,28 @@ export NEMO_RL_PY_EXECUTABLES_TRTLLM="${NEMO_RL_PY_EXECUTABLES_TRTLLM:-/usr/bin/
 # NeMo-RL dependencies (including transformers) live in this CPython-3.12
 # venv.  Make the latter visible to the system-Python Ray actors without
 # replacing the interpreter that can import tensorrt_llm.
-export PYTHONPATH="/opt/nemo_rl_venv/lib/python3.12/site-packages:${PYTHONPATH:-}"
+NEMO_RL_VENV_PY="/opt/nemo_rl_venv/bin/python"
+if [[ ! -x "$NEMO_RL_VENV_PY" ]]; then
+  echo "ERROR: required NeMo-RL interpreter is missing or not executable: $NEMO_RL_VENV_PY" >&2
+  return 1
+fi
+export NEMO_RL_PURELIB="$($NEMO_RL_VENV_PY -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
+if [[ ! -d "$NEMO_RL_PURELIB" ]]; then
+  echo "ERROR: NeMo-RL purelib directory is missing: $NEMO_RL_PURELIB" >&2
+  return 1
+fi
+export PYTHONPATH="$NEMO_RL_PURELIB${PYTHONPATH:+:$PYTHONPATH}"
+/usr/bin/python3 - <<'PY'
+import sys
+import transformers
+
+print(
+    "RAY_EXECUTOR_DEBUG "
+    f"executable={sys.executable} purelib={__import__('os').environ['NEMO_RL_PURELIB']} "
+    f"transformers={transformers.__file__}",
+    file=sys.stderr,
+)
+PY
 export LLM_MODELS_ROOT="${LLM_MODELS_ROOT:-/lustre/fsw/coreai_comparch_trtllm/common}"
 export HF_HOME="${HF_HOME:-/lustre/fsw/portfolios/coreai/projects/coreai_comparch_trtllm/users/shuyix/hf_cache}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-${PWD}/.cache/hf/datasets}"
