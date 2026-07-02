@@ -53,7 +53,7 @@ def get_nsight_config_if_pattern_matches(worker_name: str) -> dict[str, Any]:
                     # Keep worker tracing lightweight.  Inner TRT-LLM TP
                     # workers use this exact resolved configuration too.
                     "t": "cuda,nvtx",
-                    "o": f"'{worker_name}_{NRL_NSYS_PROFILE_STEP_RANGE}_%p'",
+                    "o": f"'{worker_name}_{NRL_NSYS_PROFILE_STEP_RANGE}_%h_%p'",
                     "stop-on-exit": "true",
                     # Capture range is required to control the scope of the profile
                     # Profile will only start/stop when torch.cuda.profiler.start()/stop() is called
