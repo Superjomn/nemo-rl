@@ -40,6 +40,15 @@ class TrtllmSpecificArgs(TypedDict):
     in_flight_weight_updates: NotRequired[bool]
     recompute_kv_cache_after_weight_updates: NotRequired[bool]
     default_chat_template_kwargs: NotRequired[dict[str, Any]]
+    # Enable per-iteration in-flight batching telemetry. When set, the async
+    # worker constructs the engine with enable_iter_perf_stats=True and drains
+    # get_stats_async() into per-worker inflight-batch-size timelines (the
+    # TRT-LLM analog of vLLM's per_worker_inflight_batch_sizes). Requires
+    # async_engine=True.
+    enable_trtllm_metrics_logger: NotRequired[bool]
+    # Poll interval (seconds) / get_stats_async timeout window for the metrics
+    # logger. Only used when enable_trtllm_metrics_logger is True.
+    trtllm_metrics_logger_interval: NotRequired[float]
 
 
 class TrtllmConfig(GenerationConfig):
